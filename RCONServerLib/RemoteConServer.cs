@@ -136,6 +136,12 @@ namespace RCONServerLib
         ///     Default: 5
         /// </summary>
         public uint MaxConnections { get; set; }
+        
+        /// <summary>
+        ///     Should auto-close old connections when a new connection is being made from same ip?
+        ///     Default: false
+        /// </summary>
+        public bool AutoCloseConnectionSameIP { get; set; }
 
         /// <summary>
         ///     Event Handler to parse custom commands
@@ -183,6 +189,17 @@ namespace RCONServerLib
                     tcpClient.Close();
                     return;
                 }
+
+            if (AutoCloseConnectionSameIP)
+            {
+                List<TcpClient> copyClients = new List<TcpClient>(_clients);
+                foreach (var tcpClient1 in copyClients)
+                    if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
+                    {
+                        tcpClient1.Close();
+                        RemoveClient(tcpClient1);
+                    }
+            }
 
             if (MaxConnectionsPerIp > 0)
             {

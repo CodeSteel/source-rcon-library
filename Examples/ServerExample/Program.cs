@@ -9,10 +9,11 @@ namespace ServerExample
     {
         public static void Main(string[] args)
         {
-            var server = new RemoteConServer(IPAddress.Any, 27015)
+            var server = new RemoteConServer(IPAddress.Any, 27014)
             {
                 SendAuthImmediately = true,
-                Debug = true
+                Debug = true,
+                Password = "password"
             };
             server.CommandManager.Add("hello", "Echos back world", (command, arguments) => { return "world"; });
             server.CommandManager.Add("help", "(command)", "Shows this help", (cmd, arguments) =>

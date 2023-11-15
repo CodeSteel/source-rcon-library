@@ -10,8 +10,8 @@ namespace ClientExample
         public static void Main(string[] args)
         {
             var ip = "127.0.0.1";
-            var port = 27015;
-            var password = "changeme";
+            var port = 27014;
+            var password = "password";
             if (args.Length == 3)
             {
                 ip = args[0];
