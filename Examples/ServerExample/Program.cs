@@ -13,7 +13,8 @@ namespace ServerExample
             {
                 SendAuthImmediately = true,
                 Debug = true,
-                Password = "password"
+                Password = "password",
+                AutoCloseConnectionSameIP = true
             };
             server.CommandManager.Add("hello", "Echos back world", (command, arguments) => { return "world"; });
             server.CommandManager.Add("help", "(command)", "Shows this help", (cmd, arguments) =>
