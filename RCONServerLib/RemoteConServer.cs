@@ -142,6 +142,12 @@ namespace RCONServerLib
         ///     Default: false
         /// </summary>
         public bool AutoCloseConnectionSameIP { get; set; }
+        
+        /// <summary>
+        ///     Should auto-close old connections when a new connection is being made from same ip?
+        ///     Default: false
+        /// </summary>
+        public Action<string> LoggerOverride { get; set; }
 
         /// <summary>
         ///     Event Handler to parse custom commands
@@ -183,12 +189,14 @@ namespace RCONServerLib
             var ip = ((IPEndPoint)tcpClient.Client.RemoteEndPoint).Address;
 
             if (MaxConnections > 0)
+            {
                 if (_clients.Count >= MaxConnections)
                 {
                     LogDebug("Rejected new connection from " + ip + " (Server full.)");
                     tcpClient.Close();
                     return;
                 }
+            }
 
             if (AutoCloseConnectionSameIP)
             {
@@ -200,21 +208,24 @@ namespace RCONServerLib
                         RemoveClient(tcpClient1);
                     }
             }
-
-            if (MaxConnectionsPerIp > 0)
+            else
             {
-                var count = 0;
-                foreach (var tcpClient1 in _clients)
-                    if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
-                        count++;
-
-                if (count >= MaxConnectionsPerIp)
+                if (MaxConnectionsPerIp > 0)
                 {
-                    LogDebug("Rejected new connection from " + ip + " (Too many connections from this IP)");
-                    tcpClient.Close();
-                    return;
+                    var count = 0;
+                    foreach (var tcpClient1 in _clients)
+                        if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
+                            count++;
+
+                    if (count >= MaxConnectionsPerIp)
+                    {
+                        LogDebug("Rejected new connection from " + ip + " (Too many connections from this IP)");
+                        tcpClient.Close();
+                        return;
+                    }
                 }
             }
+
 
             if (EnableIpWhitelist)
                 if (!IpWhitelist.Any(p =>
@@ -259,6 +270,12 @@ namespace RCONServerLib
             if (!Debug)
                 return;
 
+            if (LoggerOverride != null)
+            {
+                LoggerOverride.Invoke(message);
+                return;
+            }
+            
             System.Diagnostics.Debug.WriteLine(message);
             Console.WriteLine(message);
         }
