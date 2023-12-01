@@ -160,6 +160,8 @@ namespace RCONServerLib
         public void StartListening()
         {
             _listener.Start();
+            if (_listener.Server == null) return;
+            if (!_listener.Server.Connected) return;
             _listener.BeginAcceptTcpClient(OnAccept, _listener);
             LogDebug("Started listening on " + ((IPEndPoint)_listener.LocalEndpoint).Address + ", Password is: \"" +
                      Password + "\"");
@@ -183,6 +185,11 @@ namespace RCONServerLib
             catch (ObjectDisposedException)
             {
                 LogDebug("Socket was closed");
+                if (_listener.Server == null || !_listener.Server.Connected)
+                {
+                    _listener.Start();
+                    if (_listener.Server == null || !_listener.Server.Connected) return;
+                }
                 _listener.BeginAcceptTcpClient(OnAccept, _listener);
                 return;
             }
@@ -197,6 +204,11 @@ namespace RCONServerLib
                 {
                     LogDebug("Rejected new connection from " + ip + " (Server full.)");
                     tcpClient.Close();
+                    if (_listener.Server == null || !_listener.Server.Connected)
+                    {
+                        _listener.Start();
+                        if (_listener.Server == null || !_listener.Server.Connected) return;
+                    }
                     _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
@@ -226,6 +238,11 @@ namespace RCONServerLib
                     {
                         LogDebug("Rejected new connection from " + ip + " (Too many connections from this IP)");
                         tcpClient.Close();
+                        if (_listener.Server == null || !_listener.Server.Connected)
+                        {
+                            _listener.Start();
+                            if (_listener.Server == null || !_listener.Server.Connected) return;
+                        }
                         _listener.BeginAcceptTcpClient(OnAccept, _listener);
                         return;
                     }
@@ -239,6 +256,11 @@ namespace RCONServerLib
                 {
                     LogDebug("Rejected new connection from " + ip + " (Not in whitelist)");
                     tcpClient.Close();
+                    if (_listener.Server == null || !_listener.Server.Connected)
+                    {
+                        _listener.Start();
+                        if (_listener.Server == null || !_listener.Server.Connected) return;
+                    }
                     _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
@@ -250,6 +272,11 @@ namespace RCONServerLib
                     LogDebug("Rejected new connection from " + ip + " (Banned till " +
                              DateTimeExtensions.FromUnixTimestamp(IpBanList[ip.ToString()]).ToString("F") + ")");
                     tcpClient.Close();
+                    if (_listener.Server == null || !_listener.Server.Connected)
+                    {
+                        _listener.Start();
+                        if (_listener.Server == null || !_listener.Server.Connected) return;
+                    }
                     _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
@@ -268,6 +295,11 @@ namespace RCONServerLib
                 return;
             }
 
+            if (_listener.Server == null || !_listener.Server.Connected)
+            {
+                _listener.Start();
+                if (_listener.Server == null || !_listener.Server.Connected) return;
+            }
             _listener.BeginAcceptTcpClient(OnAccept, _listener);
         }
 
