@@ -14,7 +14,9 @@ namespace ServerExample
                 SendAuthImmediately = true,
                 Debug = true,
                 Password = "password",
-                AutoCloseConnectionSameIP = true
+                AutoCloseConnectionSameIP = true,
+                EmptyPayloadKick = true,
+                LoggerOverride = Console.WriteLine
             };
             server.CommandManager.Add("hello", "Echos back world", (command, arguments) => { return "world"; });
             server.CommandManager.Add("help", "(command)", "Shows this help", (cmd, arguments) =>

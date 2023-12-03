@@ -161,7 +161,6 @@ namespace RCONServerLib
         {
             _listener.Start();
             if (_listener.Server == null) return;
-            if (!_listener.Server.Connected) return;
             _listener.BeginAcceptTcpClient(OnAccept, _listener);
             LogDebug("Started listening on " + ((IPEndPoint)_listener.LocalEndpoint).Address + ", Password is: \"" +
                      Password + "\"");
@@ -326,6 +325,12 @@ namespace RCONServerLib
         internal void RemoveClient(TcpClient client)
         {
             _clients.Remove(client);
-        }
+            if (_listener.Server == null || !_listener.Server.Connected)
+            {
+                _listener.Start();
+                if (_listener.Server == null || !_listener.Server.Connected) return;
+            }
+            _listener.BeginAcceptTcpClient(OnAccept, _listener);
+       }
     }
 }

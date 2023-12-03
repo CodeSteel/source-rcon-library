@@ -100,7 +100,6 @@ namespace RCONServerLib
             if (_isUnitTest)
                 return;
             _remoteConServer.RemoveClient(_tcp);
-            _remoteConServer.LogDebug(((IPEndPoint)_tcp.Client.RemoteEndPoint).Address + " connection closed.");
 
             _connected = false;
 
@@ -139,7 +138,6 @@ namespace RCONServerLib
                 var bytesRead = _ns.EndRead(result);
                 if (!_tcp.Connected || !_connected)
                 {
-                    _remoteConServer.LogDebug(((IPEndPoint)_tcp.Client.RemoteEndPoint).Address + " lost connection.");
                     CloseConnection();
                     return;
                 }
@@ -170,7 +168,6 @@ namespace RCONServerLib
 
                 if (!_connected || !_tcp.Connected)
                 {
-                    _remoteConServer.LogDebug(((IPEndPoint)_tcp.Client.RemoteEndPoint).Address + " lost connection.");
                     CloseConnection();
                     return;
                 }
@@ -180,12 +177,10 @@ namespace RCONServerLib
             }
             catch (IOException)
             {
-                _remoteConServer.LogDebug(((IPEndPoint)_tcp.Client.RemoteEndPoint).Address + " lost connection.");
                 CloseConnection();
             }
             catch (ThreadAbortException)
             {
-                _remoteConServer.LogDebug(((IPEndPoint)_tcp.Client.RemoteEndPoint).Address + " socket closed.");
                 CloseConnection();
             }
             catch (RconServerException)
@@ -287,6 +282,7 @@ namespace RCONServerLib
 
                     if (_remoteConServer.EmptyPayloadKick)
                         CloseConnection();
+                    
                     return;
                 }
 
