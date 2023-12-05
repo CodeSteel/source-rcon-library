@@ -11,7 +11,7 @@ namespace RCONServerLib
     {
         public delegate string CommandEventHandler(string command, IList<string> args);
 
-        private readonly List<TcpClient> _clients;
+        private List<TcpClient> _clients;
 
         private readonly TcpListener _listener;
 
@@ -34,6 +34,7 @@ namespace RCONServerLib
             SendAuthImmediately = false;
             IpBanList = new Dictionary<string, int>();
             MaxConnectionsPerIp = 1;
+            AutoCloseConnectionSameIP = true;
             MaxConnections = 5;
 
 #if DEBUG
@@ -129,13 +130,6 @@ namespace RCONServerLib
         ///     Default: 1
         /// </summary>
         public uint MaxConnectionsPerIp { get; set; }
-
-        /// <summary>
-        ///     How many clients can connect to the server
-        ///     (Setting this to zero means unlimited)
-        ///     Default: 5
-        /// </summary>
-        public uint MaxConnections { get; set; }
         
         /// <summary>
         ///     Should auto-close old connections when a new connection is being made from same ip?
@@ -150,6 +144,13 @@ namespace RCONServerLib
         public Action<string> LoggerOverride { get; set; }
 
         /// <summary>
+        ///     How many clients can connect to the server
+        ///     (Setting this to zero means unlimited)
+        ///     Default: 5
+        /// </summary>
+        public uint MaxConnections { get; set; }
+
+        /// <summary>
         ///     Event Handler to parse custom commands
         /// </summary>
         public event CommandEventHandler OnCommandReceived;
@@ -160,7 +161,6 @@ namespace RCONServerLib
         public void StartListening()
         {
             _listener.Start();
-            if (_listener.Server == null) return;
             _listener.BeginAcceptTcpClient(OnAccept, _listener);
             LogDebug("Started listening on " + ((IPEndPoint)_listener.LocalEndpoint).Address + ", Password is: \"" +
                      Password + "\"");
@@ -184,70 +184,45 @@ namespace RCONServerLib
             catch (ObjectDisposedException)
             {
                 LogDebug("Socket was closed");
-                if (_listener.Server == null || !_listener.Server.Connected)
-                {
-                    _listener.Start();
-                    if (_listener.Server == null || !_listener.Server.Connected) return;
-                }
-                _listener.BeginAcceptTcpClient(OnAccept, _listener);
                 return;
             }
 
             var ip = ((IPEndPoint)tcpClient.Client.RemoteEndPoint).Address;
-            
-            LogDebug("Getting new connection request from " + ip);
 
             if (MaxConnections > 0)
-            {
                 if (_clients.Count >= MaxConnections)
                 {
                     LogDebug("Rejected new connection from " + ip + " (Server full.)");
                     tcpClient.Close();
-                    if (_listener.Server == null || !_listener.Server.Connected)
-                    {
-                        _listener.Start();
-                        if (_listener.Server == null || !_listener.Server.Connected) return;
-                    }
-                    _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
-            }
 
             if (AutoCloseConnectionSameIP)
             {
-                List<TcpClient> copyClients = new List<TcpClient>(_clients);
-                foreach (var tcpClient1 in copyClients)
-                    if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
-                    {
-                        LogDebug("Closing past connection from same ip...");
-                        tcpClient1.Close();
-                        RemoveClient(tcpClient1);
-                    }
-            }
-            else
-            {
-                if (MaxConnectionsPerIp > 0)
+                int clientCount = _clients.Count;
+                for (int i = 0; i < clientCount; i++)
                 {
-                    var count = 0;
-                    foreach (var tcpClient1 in _clients)
-                        if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
-                            count++;
-
-                    if (count >= MaxConnectionsPerIp)
+                    if (((IPEndPoint)_clients[i].Client.RemoteEndPoint).Address.ToString() == ip.ToString())
                     {
-                        LogDebug("Rejected new connection from " + ip + " (Too many connections from this IP)");
-                        tcpClient.Close();
-                        if (_listener.Server == null || !_listener.Server.Connected)
-                        {
-                            _listener.Start();
-                            if (_listener.Server == null || !_listener.Server.Connected) return;
-                        }
-                        _listener.BeginAcceptTcpClient(OnAccept, _listener);
-                        return;
+                        _clients[i].Close();
+                        _clients.Remove(_clients[i]);
                     }
                 }
             }
+            else if (MaxConnectionsPerIp > 0)
+            {
+                var count = 0;
+                foreach (var tcpClient1 in _clients)
+                    if (((IPEndPoint)tcpClient1.Client.RemoteEndPoint).Address.ToString() == ip.ToString())
+                        count++;
 
+                if (count >= MaxConnectionsPerIp)
+                {
+                    LogDebug("Rejected new connection from " + ip + " (Too many connections from this IP)");
+                    tcpClient.Close();
+                    return;
+                }
+            }
 
             if (EnableIpWhitelist)
                 if (!IpWhitelist.Any(p =>
@@ -255,12 +230,6 @@ namespace RCONServerLib
                 {
                     LogDebug("Rejected new connection from " + ip + " (Not in whitelist)");
                     tcpClient.Close();
-                    if (_listener.Server == null || !_listener.Server.Connected)
-                    {
-                        _listener.Start();
-                        if (_listener.Server == null || !_listener.Server.Connected) return;
-                    }
-                    _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
 
@@ -271,12 +240,6 @@ namespace RCONServerLib
                     LogDebug("Rejected new connection from " + ip + " (Banned till " +
                              DateTimeExtensions.FromUnixTimestamp(IpBanList[ip.ToString()]).ToString("F") + ")");
                     tcpClient.Close();
-                    if (_listener.Server == null || !_listener.Server.Connected)
-                    {
-                        _listener.Start();
-                        if (_listener.Server == null || !_listener.Server.Connected) return;
-                    }
-                    _listener.BeginAcceptTcpClient(OnAccept, _listener);
                     return;
                 }
 
@@ -289,16 +252,8 @@ namespace RCONServerLib
             _clients.Add(tcpClient);
 
             if (!_listener.Server.IsBound)
-            {
-                LogDebug("Server not bound, no longer accepting clients...");
                 return;
-            }
 
-            if (_listener.Server == null || !_listener.Server.Connected)
-            {
-                _listener.Start();
-                if (_listener.Server == null || !_listener.Server.Connected) return;
-            }
             _listener.BeginAcceptTcpClient(OnAccept, _listener);
         }
 
@@ -325,12 +280,6 @@ namespace RCONServerLib
         internal void RemoveClient(TcpClient client)
         {
             _clients.Remove(client);
-            if (_listener.Server == null || !_listener.Server.Connected)
-            {
-                _listener.Start();
-                if (_listener.Server == null || !_listener.Server.Connected) return;
-            }
-            _listener.BeginAcceptTcpClient(OnAccept, _listener);
-       }
+        }
     }
 }

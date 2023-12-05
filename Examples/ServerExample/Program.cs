@@ -15,8 +15,7 @@ namespace ServerExample
                 Debug = true,
                 Password = "password",
                 AutoCloseConnectionSameIP = true,
-                EmptyPayloadKick = true,
-                LoggerOverride = Console.WriteLine
+                LoggerOverride = Console.WriteLine,
             };
             server.CommandManager.Add("hello", "Echos back world", (command, arguments) => { return "world"; });
             server.CommandManager.Add("help", "(command)", "Shows this help", (cmd, arguments) =>
@@ -30,7 +29,7 @@ namespace ServerExample
 
                     return string.Format("{0} - {1}", helpCmd.Name, helpCmd.Description);
                 }
-                
+
                 var sb = new StringBuilder();
 
                 var all = server.CommandManager.Commands.Count;
@@ -49,8 +48,6 @@ namespace ServerExample
 
                 return sb.ToString();
             });
-            
-            
 
             server.StartListening();
 
